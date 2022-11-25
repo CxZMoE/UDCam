@@ -22,7 +22,7 @@ class KCamera():
         try:
             self.buffer += chr(data)
         except:
-            self.buffer += ''
+            self.buffer = ''
 
     def on_event(self, event):
         global trans_end
