@@ -19,8 +19,6 @@ class KCamera_ObjectRec():
     # KPU网络对象(kpu.init)
     kpu_net_obj = None
 
-   
-
     # 识别结果
     result = ''
     def __init__(self):

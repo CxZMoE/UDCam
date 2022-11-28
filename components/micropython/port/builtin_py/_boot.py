@@ -20,7 +20,7 @@ del i
 
 # check IDE mode
 ide_mode_conf = "/flash/ide_mode.conf"
-ide = True
+ide = False
 try:
     f = open(ide_mode_conf)
     f.close()

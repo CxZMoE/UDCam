@@ -8,14 +8,16 @@ import gc,os
 from reconize_blobs import *
 
  # 操作
-KC_ACT_LOADMODE = b'load'
-ACT_GET = b'get'
-ACT_UPDATE_SAVE_NAME = b'update'
+KC_ACT_LOADMODE = 'load'
+ACT_GET = 'get'
+ACT_UPDATE_SAVE_NAME = 'update'
 
 class KCameraSelfLearning():
     result = b''
     result_index = 0
     process = None
+    name = 'self_learning'
+    classifier_name = ''
     def __init__(self, num, key_save):
         sensor.set_windowing((224, 224))
         fm.register(board_info.BOOT_KEY, fm.fpioa.GPIOHS0)
@@ -115,7 +117,7 @@ class KCameraSelfLearning():
             # print(a)
         lcd.display(img)
 
-    def load_classifier(self): #加载文件系统中的自学习文件
+    def load_classifier(self):
         self.classifier = kpu.classifier(self.model, self.class_num, self.sample_num, fea_len=512)
         print("class num: {} sample num: {}\n".format(self.class_num, self.sample_num))
 
@@ -145,9 +147,10 @@ class KCameraSelfLearning():
         else:
             self.result = ('modeobj|Unknown|{}'.format(color)).encode()
             self.result_index = 0
-        print("{:.2f}".format(min_dist))
-        print(self.result)
+        # print("{:.2f}".format(min_dist))
+        # print(self.result)
         lcd.display(img)
+        # gc.collect()
 
     def update(self,Num):      #更新数量,后期使用
         self.class_num = Num
@@ -184,14 +187,16 @@ class KCameraSelfLearning():
 
     def load_save_learn(self,load_name):
         print("加载保存的文件:", load_name)
-        try:
+        if (self.classifier_name != load_name):
             self.classifier,self.class_num,self.sample_num = kpu.classifier.load(self.model,load_name, fea_len=512)
             prefix = load_name.split('.')[0]
             for i in range(len(self.class_names)):     
                 self.class_names[i] = "{}_{}".format(prefix, i+1)
+            self.classifier_name = load_name
+            gc.collect()
             return 1
-        except:
-            return 0
+        else:
+            return 1
 
     def __deinit__(self):
         self.process = None
