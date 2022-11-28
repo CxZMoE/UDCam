@@ -31,21 +31,45 @@ currentItem = None # 当前模式的对象
 currentModeData = []
 # I2C数据缓冲区
 i2cRxParsed = []
-i2cRxBuffer = bytearray(128)
 i2cRxIndex = 0
 
 i2cTxBuffer = b''       # I2C 发送缓存
 i2cTxEnd = False        # I2C 是否发送结束
 i2cTxIndex = 0          # I2C 发送序号
 
+processing = False
 queue = []
 
+class RINGBUFFER:
+    def __init__(self, size):
+        self.data = bytearray(size)
+        self.size = size
+        self.index_put = 0
+        self.index_get = 0
+        
+    def put(self, value):
+        next_index = (self.index_put + 1) % self.size
+        # check for overflow
+        if self.index_get != next_index: 
+            self.data[self.index_put] = value
+            self.index_put = next_index
+            return value
+        else:
+            return None
+        
+    def get(self):
+        if self.index_get == self.index_put:
+            return None  ## buffer empty
+        else:
+            value = self.data[self.index_get]
+            self.index_get = (self.index_get + 1) % self.size
+            return value
+
+i2cRxBuffer = RINGBUFFER(4096)
 
 # I2C的回调函数
 def on_receive(c):
-    global i2cRxBuffer,i2cRxIndex
-    i2cRxBuffer[i2cRxIndex] = c
-    i2cRxIndex = i2cRxIndex + 1
+    i2cRxBuffer.put(c)
 
 def on_event(event):
     # 当I2C传输时间发生时
@@ -54,13 +78,6 @@ def on_event(event):
     if event == I2C_TRANS_END:
         global i2cTxIndex , i2cRxIndex, queue
         i2cTxIndex = 0
-        t = i2cRxBuffer[:i2cRxIndex].decode().split('|')
-        if (len(t) > 1 and len(queue) < 5):
-            i2cRxParsed = t
-            queue.append(i2cRxParsed)
-            print(i2cRxParsed) # 打印接收到的数据
-        i2cRxIndex = 0
-        del t
 
 def on_transmit():
     global i2cTxIndex
@@ -116,69 +133,106 @@ def initItem(obj):
 
 # 执行回调
 func = None
-
+timeout = 100
+t = 0
 while True:
     # 进行数据解析
-    if (len(queue) > 0):
-        i2cRxParsed = queue[0]
-        if (len(i2cRxParsed) >= 2):
-            # 至少是 ['obj','start']
-            if (i2cRxParsed[0] == KC_MODE_SELF_LEARNING):
-                # 自学习分类
-                import kcamera_selflearning as mode
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    # 开始学习模式
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
-                        clearItem()
-                        currentItem = mode.KCameraSelfLearning(4, boot_key)
-                    func = currentItem.star_learn
-                elif (i2cRxParsed[1] == mode.KC_ACT_LOADMODE):
-                    # 开始加载分类器模式
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
-                        clearItem()
-                        currentItem = mode.KCameraSelfLearning(4, boot_key)
-                    if (len(i2cRxParsed) >= 3):
-                        print('[KC] 加载自学习分类器: {}'.format(i2cRxParsed[2]))
-                        currentItem.load_save_learn(str(i2cRxParsed[2]))
-                        func = currentItem.load_self_learning_mode
+    read = b''
+    t = time.ticks_ms()
+    while time.ticks_ms() - t < timeout:
+        c = i2cRxBuffer.get()
+        if (c != None):
+            if (c == 0x03):
+                break
+            read += chr(c)
+    
+    print(read)
+    i2cRxParsed = read.decode().split('|')
+
+    print(i2cRxParsed)
+    if (len(i2cRxParsed) >= 2):
+        # 至少是 ['obj','start']
+        if (i2cRxParsed[0] == KC_MODE_SELF_LEARNING):
+            # 自学习分类
+            import kcamera_selflearning as mode
+            if (i2cRxParsed[1] == KC_ACT_START):
+                # 开始学习模式
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
+                    clearItem()
+                    currentItem = mode.KCameraSelfLearning(4, boot_key)
+                func = currentItem.star_learn
+            elif (i2cRxParsed[1] == mode.KC_ACT_LOADMODE):
+                # 开始加载分类器模式
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
+                    clearItem()
+                    currentItem = mode.KCameraSelfLearning(4, boot_key)
+                if (len(i2cRxParsed) >= 3):
+                    print('[KC] 加载自学习分类器: {}'.format(i2cRxParsed[2]))
+                    currentItem.load_save_learn(str(i2cRxParsed[2]))
+                    func = currentItem.load_self_learning_mode
+                else:
+                    print('[KC] 加载分类器失败: 参数不全')
+            elif (i2cRxParsed[1] == mode.ACT_UPDATE_SAVE_NAME):
+                # 更新分类器名称
+                if (len(i2cRxParsed) >= 3):
+                    currentItem.load_classifier()
+                    currentItem.update_save_name(i2cRxParsed[2])
+                    print('[KC] 更新分类器名称: {}'.format(i2cRxParsed[2]))
+                else:
+                    print('[KC] 更新分类器名称失败: 参数不全')
+            elif (i2cRxParsed[1] == mode.ACT_GET):
+                # 获取识别结果
+                i2cTxBuffer = currentItem.result
+                print('[KC] 用户进行数据请求...')
+        elif (i2cRxParsed[0] == KC_MODE_OBJ):
+            # 物体识别
+            import kcamera_objrec as mode
+            if (i2cRxParsed[1] == KC_ACT_START):
+                # 开始物体识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
+                    clearItem()
+                    currentItem = mode.KCamera_ObjectRec()
+                func = currentItem.process
+            elif (i2cRxParsed[1] == KC_ACT_GET):
+                # 获取识别结果
+                i2cTxBuffer = currentItem.result
+        elif (i2cRxParsed[0]) == KC_MODE_HUMAN_FACE:
+            # 人脸识别
+            import kcamera_face as mode
+            if (i2cRxParsed[1] == KC_ACT_START):
+                # 开始人脸识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
+                    clearItem()
+                    currentItem = mode.KCamera_FaceRec()
+                    func = currentItem.fr
+            elif (i2cRxParsed[1] == KC_ACT_GET):
+                # 获取识别结果
+                i2cTxBuffer = currentItem.result
+            elif (i2cRxParsed[1] == 'add'):
+                # 添加保存的人脸
+                if (len(i2cRxParsed) > 2):
+                    mode.names.append(i2cRxParsed[2])
+                else:
+                    print('[KC] 人脸名称错误')
+            elif (i2cRxParsed[1] == 'del'):
+                # 删除人脸
+                if (len(i2cRxParsed) > 2):
+                    if (i2cRxParsed[2] == 'all'):
+                        # 删除全部
+                        currentItem.del_all_save_face()
                     else:
-                        print('[KC] 加载分类器失败: 参数不全')
-                elif (i2cRxParsed[1] == mode.ACT_UPDATE_SAVE_NAME):
-                    # 更新分类器名称
-                    if (len(i2cRxParsed) >= 3):
-                        currentItem.load_classifier()
-                        currentItem.update_save_name(i2cRxParsed[2])
-                        print('[KC] 更新分类器名称: {}'.format(i2cRxParsed[2]))
-                    else:
-                        print('[KC] 更新分类器名称失败: 参数不全')
-                elif (i2cRxParsed[1] == mode.ACT_GET):
-                    # 获取识别结果
-                    i2cTxBuffer = currentItem.result
-                    print('[KC] 用户进行数据请求...')
-            elif (i2cRxParsed[0] == KC_MODE_OBJ):
-                # 物体识别
-                import kcamera_face as mode
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    # 开始物体识别
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
-                        clearItem()
-                        currentItem = mode.KCamera_ObjectRec()
-                    func = currentItem.process
-                elif (i2cRxParsed[1] == KC_ACT_GET):
-                    # 获取识别结果
-                    i2cTxBuffer = currentItem.result
-            
-        queue = queue[1:]
+                        currentItem.del_save_face(i2cRxParsed[2])
+                else:
+                    print('[KC] 人脸名称错误')
+        
     
     if (func != None):
         func()
-        # gc.collect()
     else:
         # 没有选择模式的时候直接显示摄像头画面
         sensor.set_windowing((320, 240))
         img = sensor.snapshot()
         img = img.draw_string(0, 200, 'Underdog Studio', color=lcd.GREEN,scale=1)
         lcd.display(img)
-    print(time.ticks_ms())
-    time.sleep_ms(30)
+    print(time.ticks_ms() / 1000)
 machine.reset()
