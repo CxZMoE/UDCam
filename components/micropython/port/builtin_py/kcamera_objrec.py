@@ -2,7 +2,7 @@ import sensor,lcd
 import KPU as kpu
 import gc
 from micropython import const
-import time
+import time, math
 
  # 操作
 ACT_GET = b'get'
@@ -14,42 +14,94 @@ ACT_GET = b'get'
 #初始化 yolo2 网络，识别可信概率为 0.5（50%）
 class KCamera_ObjectRec():
     classes = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
+    classes_count = [0] * 20
     anchor = (1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52)
-
+    name = 'obj'
     # KPU网络对象(kpu.init)
     kpu_net_obj = None
 
     # 识别结果
-    result = ''
+    result = {
+        'id': None,
+        'x': 0,
+        'y': 0,
+        'count': 0
+    }
     def __init__(self):
+        sensor.set_windowing((320, 240))
         # 首先加载物体的模型(KModel)
         self.kpu_net_obj = kpu.load(0x600000)
         kpu.init_yolo2(self.kpu_net_obj, 0.5, 0.3, 5, self.anchor)
+        self.center = (320//2, 240//2)
     
+    def VectorLen(self, vec_a, vec_b):
+        vec = [0, 0, 0]
+        for axis in range(len(vec_a)):
+            vec[axis] = vec_a[axis] - vec_b[axis]
+
+        # now vec is [x, y, z]
+        # Calc Len
+        return math.sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2])
+
     # 对图像进行处理，物体识别
     def process(self):
+        for i in range(20):
+            self.classes_count[i] = 0
         try:
             img = sensor.snapshot()
         except:
-            return
-        try:
-            items = kpu.run_yolo2(self.kpu_net_obj, img)
-            # 遍历识别结果的对象
-            if items:
-                for item in items:
-                    x = item.x()
-                    y = item.y()
-                    id = item.classid()
-                    # 为对象画框
-                    img.draw_rectangle(item.rect())
-                    img.draw_string(x+5, y, self.classes[id], color=lcd.ORANGE)
-                
-                # 为结果赋值
-                self.result = self.classes[id].encode()
-                # kcamera_i2c.transmit_buffer = self.classes[id].encode()
-            lcd.display(img)
-        except:
-            pass
+            return img
+        items = kpu.run_yolo2(self.kpu_net_obj, img)
+        # 遍历识别结果的对象
+        if items:
+            closest_index = -1
+            closest_d = 320
+            for i in range(len(items)):
+                item = items[i]
+                x,y,width,height = item.rect()
+                # 去除宽度小于50px的
+                # if width < 50 or height < 50:
+                    # continue
+                id = item.classid()
+                # 为对象画框
+                img.draw_rectangle(item.rect(), color=(255,128,0), thickness=1)
+                img.draw_rectangle(x, y, len(self.classes[id]), 16, color=(255,128,0), thickness=1, fill=True)
+                img.draw_string(x + 10, y, self.classes[id], color=(255, 255, 255))
+                self.classes_count[id] += 1
+
+                # 找最近的
+                cx = x + width // 2
+                cy = y + height // 2
+                d = self.VectorLen(self.center, (cx, cy))
+                if d < closest_d:
+                    closest_d = d
+                    closest_index = id
+
+            # 为结果赋值(距离准星最近的)
+            if closest_index < 0:
+                # self.result = ('unknown|0').encode('utf-8')
+                self.result['id'] = None
+                self.result['x'] = cx
+                self.result['y'] = cy
+                self.result['count'] = 0
+                return img
+            count = 0
+            for item in items:
+                if item.classid() == closest_index:
+                    count += 1
+            # self.result = ('%s|%d' % (self.classes[closest_index], count)).encode('utf-8')
+            self.result['id'] = self.classes[closest_index]
+            self.result['x'] = cx
+            self.result['y'] = cy
+            self.result['count'] = count
+            print_str = ('%s (%d)' % (self.classes[closest_index], count)).encode('utf-8')
+            img.draw_rectangle(0, 210, 320, 30, color=(255,128,0), thickness=1, fill=True)
+            img.draw_string((320 - len(print_str) * 16) // 2, 220, print_str, color=(255,255,255), scale=1, x_spacing=0, y_spacing=0, mono_space=True)
+        else:
+            self.result['id'] = None
+        
+         
+        return img
 
     def __deinit__(self):
         if self.kpu_net_obj:
