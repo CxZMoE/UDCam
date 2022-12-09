@@ -3,7 +3,7 @@ import KPU as kpu
 import gc
 from micropython import const
 import time, math
-
+import ui
  # 操作
 ACT_GET = b'get'
 
@@ -14,6 +14,7 @@ ACT_GET = b'get'
 #初始化 yolo2 网络，识别可信概率为 0.5（50%）
 class KCamera_ObjectRec():
     classes = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
+    classes_intl = ['飞机', '自行车', '鸟', '船', '瓶子', '公交车', '汽车', '猫', '椅子', '牛', '餐桌', '狗', '马', '摩托车', '人', '土豆植物', '羊', '沙发', '火车', '电视监视器']
     classes_count = [0] * 20
     anchor = (1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52)
     name = 'obj'
@@ -65,8 +66,8 @@ class KCamera_ObjectRec():
                 id = item.classid()
                 # 为对象画框
                 img.draw_rectangle(item.rect(), color=(255,128,0), thickness=1)
-                img.draw_rectangle(x, y, len(self.classes[id]), 16, color=(255,128,0), thickness=1, fill=True)
-                img.draw_string(x + 10, y, self.classes[id], color=(255, 255, 255))
+                img.draw_rectangle(x, y, ui.GetStrLenFixed(self.classes_intl[id]), 16, color=(255,128,0), thickness=1, fill=True)
+                ui.DrawString(img, x, y, self.classes_intl[id])
                 self.classes_count[id] += 1
 
                 # 找最近的
@@ -90,17 +91,15 @@ class KCamera_ObjectRec():
                 if item.classid() == closest_index:
                     count += 1
             # self.result = ('%s|%d' % (self.classes[closest_index], count)).encode('utf-8')
-            self.result['id'] = self.classes[closest_index]
+            self.result['id'] = self.classes_intl[closest_index]
             self.result['x'] = cx
             self.result['y'] = cy
             self.result['count'] = count
-            print_str = ('%s (%d)' % (self.classes[closest_index], count)).encode('utf-8')
+            print_str = ('%s(%d个)' % (self.classes_intl[closest_index], count))
             img.draw_rectangle(0, 210, 320, 30, color=(255,128,0), thickness=1, fill=True)
-            img.draw_string((320 - len(print_str) * 16) // 2, 220, print_str, color=(255,255,255), scale=1, x_spacing=0, y_spacing=0, mono_space=True)
+            ui.DrawString(img, (320 - ui.GetStrLenFixed(print_str)) // 2, 220, print_str)
         else:
             self.result['id'] = None
-        
-         
         return img
 
     def __deinit__(self):

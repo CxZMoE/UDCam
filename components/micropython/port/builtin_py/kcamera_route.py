@@ -14,7 +14,7 @@ import time
 import math
 from GeometryFeature import GeometryFeature
 import lcd
-
+import ui
 is_debug = True
 DISTORTION_FACTOR = 1.15 # 畸变矫正因子
 IMG_WIDTH  = 320        # 像素点宽度
@@ -116,7 +116,8 @@ class FindRouteBlobs():
         self.result['cross_x'] = cx
         self.result['cross_y'] = cy
         # print(self.result)
-        canvas.draw_string(0, 0, turn_type, color=(0))
+        # canvas.draw_string(0, 0, turn_type, color=(0))
+        ui.DrawString(canvas, 10, 30, "路口类型: " + turn_type)
     last_cx = 0
     last_cy = 0
 

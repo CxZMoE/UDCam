@@ -6,7 +6,7 @@ import time
 from Maix import FPIOA, GPIO
 from fpioa_manager import fm
 import gc
-
+import ui
 # 设置按键
 fm.register(16, fm.fpioa.GPIOHS8)
 key_gpio=GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
@@ -112,21 +112,23 @@ class KCamera_Face():
                         index = k
                 
                 if max_score > self.ACCURACY:
-                    img.draw_string(face.x(), face.y(),
-                        ("%s :%2.1f" % (self.custom_names[index], max_score)),
-                        color=(0, 255, 0), scale=1, x_spacing=0, y_spacing=0
-                    )
+                    ui.DrawString(img, face.x(), face.y(), ("%s: %2.1f" % (self.custom_names[index], max_score)), color=(0, 255, 0))
+                    # img.draw_string(face.x(), face.y(),
+                    #     ("%s :%2.1f" % (self.custom_names[index], max_score)),
+                    #     color=(0, 255, 0), scale=1, x_spacing=0, y_spacing=0
+                    # )
                     # self.result = ('%s|%d|%d|%d' % (self.custom_names[index], face.x() + face.w() // 2, face.y() + face.h()//2, int(max_score))).encode('utf-8')
                     self.result['id'] = self.custom_names[index]
                     self.result['x'] = face.x() + face.w() // 2
                     self.result['y'] = face.y() + face.h() // 2
                 else:
-                    img.draw_string(face.x(), face.y(),
-                        ("X :%2.1f" % (max_score)),
-                        color=(255, 0, 0), scale=1, x_spacing=0, y_spacing=0
-                    )
+                    # img.draw_string(face.x(), face.y(),
+                    #     ("X :%2.1f" % (max_score)),
+                    #     color=(255, 0, 0), scale=1, x_spacing=0, y_spacing=0
+                    # )
+                    ui.DrawString(img, face.x(), face.y(), ("X: %2.1f" % (max_score)), color=(0, 255, 0))
                     self.result['id'] = None
-                    
+
                 # 处理保存人脸按键
                 if self.start_processing:
                     self.record_ftr = feature
