@@ -1,6 +1,7 @@
 from micropython import const
 import machine
 from machine import I2C
+from machine import WDT
 import time
 import gc
 import ui
@@ -48,6 +49,7 @@ i2cTxIndex = 0                  # I2C 发送序号
 
 # I2C的回调函数
 def on_receive(c):
+    # print('[I2C] %s' % (c))
     i2cRxBuffer.put(c)
 
 def on_event(event):
@@ -55,7 +57,7 @@ def on_event(event):
     if event == I2C_TRANS_START:
         pass
     if event == I2C_TRANS_END:
-        global i2cTxIndex , i2cRxIndex, queue
+        global i2cTxIndex
         i2cTxIndex = 0
 
 def on_transmit():
@@ -141,6 +143,28 @@ mui.AddMenuItem(ui.GetIntl('条形码识别'))
 mui.AddMenuItem(ui.GetIntl('颜色识别'))
 mui.AddMenuItem(ui.GetIntl('循迹识别'))
 mui.AddMenuItem(ui.GetIntl('标签识别'))
+
+
+## 数据处理线程 ##
+import _thread
+readline = ''
+need_readline = False
+def data_thread(arg):
+    global readline, need_readline, currentMode, process_callback
+    ## 进行数据解析 ##
+    # 从缓冲区获取一行数据
+    c = i2cRxBuffer.get()
+    if (c != None):
+        # print('[Timer] %s' % (c))
+        if (c == 0x03):
+            need_readline = True
+        else:
+            readline += chr(c)
+from machine import Timer
+rx_timer = Timer(0,Timer.CHANNEL0,mode=Timer.MODE_PERIODIC,period=1, unit=Timer.UNIT_MS,callback=data_thread,arg=None,start=True)
+
+## 看门狗 ##
+wdt0 = WDT(id=1, timeout=3000)
 
 # 主循环
 def clearItem():
@@ -233,164 +257,190 @@ def switch_mode(mode):
         process_callback = currentItem.Process
         mui.setTitle(ui.GetIntl('标签识别'))
 
-
-readline = b''
-need_readline = False
 # 执行回调
-while True:
-    ## 进行数据解析 ##
-    
-    # 从缓冲区获取一行数据
-    c = i2cRxBuffer.get()
-    if (c != None):
-        if (c == 0x03):
-            readline = b''
-        else:
-            readline += chr(c)
-        
-    # 解析并且使用分隔符切分
-    need_readline = True if len(readline) > 0 else False
-    try:
-        i2cRxParsed = readline.decode()
-    except Exception as e:
-        print(e)
-        need_readline = False
-    
-    # 分割字符串
-    i2cRxParsed = i2cRxParsed.split(DATA_SEPERATOR)
 
-    # 处理逻辑
-    if need_readline:
-        if (len(i2cRxParsed) >= 2):
-            if (i2cRxParsed[0] == KC_MODE_SELF_LEARNING):
+def ParseData(jsonstr):
+    global currentMode
+    global currentItem
+    global process_callback
+
+    # 解析并且使用JSON解析 
+    try:
+        request = json.loads(jsonstr)
+    except:
+        return None
+    
+    method = request['method']
+    if method == 'switch_mode':
+        mode_to_change = request['mode']
+        act = request['act']
+        data = request['data']
+        if (mode_to_change == KC_MODE_SELF_LEARNING):
+            import kcamera_selflearning as mode
+            if (act == KC_ACT_START):
                 # 自学习分类
-                import kcamera_selflearning as mode
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    # 开始学习模式
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
+                    clearItem()
+                    currentItem = mode.KCameraSelfLearning(4, boot_key)
+                    currentMode = KC_MODE_SELF_LEARNING
+                currentItem.load_classifier()
+                process_callback = currentItem.star_learn
+                mui.setTitle(ui.GetIntl('分类识别'))
+            elif (act == mode.KC_ACT_LOADMODE):
+                # 开始加载分类器模式
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
+                    clearItem()
+                    currentItem = mode.KCameraSelfLearning(4, boot_key)
+                    currentMode = KC_MODE_SELF_LEARNING
+                if (data != None):
+                    print('[KC] 加载自学习分类器: {}'.format(data))
+                    currentItem.load_save_learn(str(data) + '.classifier')
+                    currentItem.load_mode = 1
+                    process_callback = currentItem.star_learn
+                    # mui.setTitle('Classifier Mode[%s]' % (str(i2cRxParsed[2]) + '.classifier'))
+                    mui.setTitle(ui.GetIntl('分类识别'))
+                else:
+                    print('[KC] 加载分类器失败: 参数不全')
+            elif (act == mode.ACT_UPDATE_SAVE_NAME):
+                # 更新分类器名称
+                if (data != None):
                     if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
                         clearItem()
                         currentItem = mode.KCameraSelfLearning(4, boot_key)
                         currentMode = KC_MODE_SELF_LEARNING
                     currentItem.load_classifier()
+                    currentItem.update_save_name(data + '.classifier')
                     process_callback = currentItem.star_learn
-                    mui.setTitle(ui.GetIntl('分类识别'))
-                elif (i2cRxParsed[1] == mode.KC_ACT_LOADMODE):
-                    # 开始加载分类器模式
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
-                        clearItem()
-                        currentItem = mode.KCameraSelfLearning(4, boot_key)
-                        currentMode = KC_MODE_SELF_LEARNING
-                    if (len(i2cRxParsed) >= 3):
-                        print('[KC] 加载自学习分类器: {}'.format(i2cRxParsed[2]))
-                        currentItem.load_save_learn(str(i2cRxParsed[2]) + '.classifier')
-                        process_callback = currentItem.load_self_learning_mode
-                        # mui.setTitle('Classifier Mode[%s]' % (str(i2cRxParsed[2]) + '.classifier'))
-                        mui.setTitle(ui.GetIntl('分类识别'))
-                    else:
-                        print('[KC] 加载分类器失败: 参数不全')
-                elif (i2cRxParsed[1] == mode.ACT_UPDATE_SAVE_NAME):
-                    # 更新分类器名称
-                    if (len(i2cRxParsed) >= 3):
-                        currentItem.load_classifier()
-                        currentItem.update_save_name(i2cRxParsed[2] + '.classifier')
-                        print('[KC] 更新分类器名称: {}'.format(i2cRxParsed[2]))
-                    else:
-                        print('[KC] 更新分类器名称失败: 参数不全')
+                    print('[KC] 更新分类器名称: {}'.format(data))
+                else:
+                    print('[KC] 更新分类器名称失败: 参数不全')
 
-            elif (i2cRxParsed[0] == KC_MODE_OBJ):
-                # 物体识别
-                import kcamera_objrec as mode
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    # 开始物体识别
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_OBJ)):
-                        clearItem()
-                        currentItem = mode.KCamera_ObjectRec()
-                        currentMode = KC_MODE_OBJ
-                    process_callback = currentItem.process
-                    mui.setTitle(ui.GetIntl('物体识别'))
+        elif (mode_to_change == KC_MODE_OBJ):
+            # 物体识别
+            import kcamera_objrec as mode
+            if (act == KC_ACT_START):
+                # 开始物体识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_OBJ)):
+                    clearItem()
+                    currentItem = mode.KCamera_ObjectRec()
+                    currentMode = KC_MODE_OBJ
+                process_callback = currentItem.process
+                mui.setTitle(ui.GetIntl('物体识别'))
 
-            elif (i2cRxParsed[0]) == KC_MODE_HUMAN_FACE:
-                # 人脸识别
-                import kcamera_face as mode
-                if (i2cRxParsed[1] == KC_ACT_START):
+        elif (mode_to_change == KC_MODE_HUMAN_FACE):
+            # 人脸识别
+            import kcamera_face as mode
+            if (act == KC_ACT_START):
+                # 开始人脸识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_HUMAN_FACE)):
+                    clearItem()
+                    currentItem = mode.KCamera_Face()
+                    currentMode = KC_MODE_HUMAN_FACE
+                    process_callback = currentItem.Fr
+                    mui.setTitle(ui.GetIntl('人脸识别'))
+            elif (act == 'add'):
+                # 添加保存的人脸
+                if (data != None):
+                    currentItem.AddFace(data)
+                else:
+                    print('[KC] 人脸名称错误')
+            elif (act == 'del'):
+                # 删除人脸
+                if (data != None):
+                    if (data == 'all'):
+                        # 删除全部
+                        currentItem.DelAllFace()
+                    else:
+                        currentItem.DelFace(data)
+                        print('[KC] 删除人脸: %s' % (data))
+                else:
+                    print('[KC] 人脸名称错误')
+
+        elif (mode_to_change == KC_MODE_QRCODE):
+            if (act == KC_ACT_START):
+                import kcamera_qrcode as mode
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_QRCODE)):
                     # 开始人脸识别
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_HUMAN_FACE)):
-                        clearItem()
-                        currentItem = mode.KCamera_Face()
-                        currentMode = KC_MODE_HUMAN_FACE
-                        process_callback = currentItem.Fr
-                        mui.setTitle(ui.GetIntl('人脸识别'))
-                elif (i2cRxParsed[1] == 'add'):
-                    # 添加保存的人脸
-                    if (len(i2cRxParsed) > 2):
-                        currentItem.AddFace(i2cRxParsed[2])
-                    else:
-                        print('[KC] 人脸名称错误')
-                elif (i2cRxParsed[1] == 'del'):
-                    # 删除人脸
-                    if (len(i2cRxParsed) > 2):
-                        if (i2cRxParsed[2] == 'all'):
-                            # 删除全部
-                            currentItem.DelAllFace()
-                        else:
-                            currentItem.DelFace(i2cRxParsed[2])
-                    else:
-                        print('[KC] 人脸名称错误')
+                    clearItem()
+                    currentItem = mode.KCameraQRCode()
+                    currentMode = KC_MODE_QRCODE
+                    process_callback = currentItem.QrCode
+                    mui.setTitle(ui.GetIntl('二维码识别'))
 
-            elif (i2cRxParsed[0]) == KC_MODE_QRCODE:
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    import kcamera_qrcode as mode
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_QRCODE)):
-                        # 开始人脸识别
-                        clearItem()
-                        currentItem = mode.KCameraQRCode()
-                        currentMode = KC_MODE_QRCODE
-                        process_callback = currentItem.QrCode
-                        mui.setTitle(ui.GetIntl('二维码识别'))
-
-            elif (i2cRxParsed[0]) == KC_MODE_BARCODE:
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    import kcamera_qrcode as mode
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_QRCODE)):
-                        # 开始人脸识别
-                        clearItem()
-                        currentItem = mode.KCameraQRCode()
-                        currentMode = KC_MODE_QRCODE
-                        process_callback = currentItem.QrCode
-                        mui.setTitle(ui.GetIntl('条形码识别'))
-
-            elif(i2cRxParsed[0] == KC_MODE_COLOR):
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    import kcamera_color as mode
+        elif (mode_to_change == KC_MODE_BARCODE):
+            if (act == KC_ACT_START):
+                import kcamera_qrcode as mode
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_QRCODE)):
                     # 开始人脸识别
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_COLOR)):
-                        clearItem()
-                        currentItem = mode.ColorUtils()
-                        currentMode = KC_MODE_COLOR
-                    process_callback = currentItem.CheckColor
-                    mui.setTitle(ui.GetIntl('颜色识别'))
-            elif(i2cRxParsed[0] == KC_MODE_ROUTE):
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    import kcamera_route as mode
-                    # 开始循迹识别
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_ROUTE)):
-                        clearItem()
-                        currentItem = mode.FindRouteBlobs()
-                        currentMode = KC_MODE_ROUTE
-                    process_callback = currentItem.Process
-                    mui.setTitle(ui.GetIntl('循迹识别'))
-            elif(i2cRxParsed[0] == KC_MODE_AprilTag):
-                if (i2cRxParsed[1] == KC_ACT_START):
-                    import kcamera_apriltag as mode
-                    # 开始标签识别
-                    if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_AprilTag)):
-                        clearItem()
-                        currentItem = mode.KCameraAprilTag()
-                        currentMode = KC_MODE_AprilTag
-                    process_callback = currentItem.Process
-                    mui.setTitle(ui.GetIntl('标签识别'))
+                    clearItem()
+                    currentItem = mode.KCameraQRCode()
+                    currentMode = KC_MODE_BARCODE
+                    process_callback = currentItem.BarCode
+                    mui.setTitle(ui.GetIntl('条形码识别'))
+
+        elif(mode_to_change == KC_MODE_COLOR):
+            if (act == KC_ACT_START):
+                import kcamera_color as mode
+                # 开始人脸识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_COLOR)):
+                    clearItem()
+                    currentItem = mode.ColorUtils()
+                    currentMode = KC_MODE_COLOR
+                process_callback = currentItem.CheckColor
+                mui.setTitle(ui.GetIntl('颜色识别'))
+        elif(mode_to_change == KC_MODE_ROUTE):
+            if (act == KC_ACT_START):
+                import kcamera_route as mode
+                # 开始循迹识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_ROUTE)):
+                    clearItem()
+                    currentItem = mode.FindRouteBlobs()
+                    currentMode = KC_MODE_ROUTE
+                process_callback = currentItem.Process
+                mui.setTitle(ui.GetIntl('循迹识别'))
+        elif(mode_to_change == KC_MODE_AprilTag):
+            if (act == KC_ACT_START):
+                import kcamera_apriltag as mode
+                # 开始标签识别
+                if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_AprilTag)):
+                    clearItem()
+                    currentItem = mode.KCameraAprilTag()
+                    currentMode = KC_MODE_AprilTag
+                process_callback = currentItem.Process
+                mui.setTitle(ui.GetIntl('标签识别'))
+
+    # 保存到文件
+    f = open('mode.cfg', 'w')
+    f.write(jsonstr)
+    f.close()
+
+# 开机的时候解析上次退出保存的数据
+try:
+    mode_file = open('mode.cfg', 'r')
+    mode_str = mode_file.read()
+    ParseData(mode_str)
+    import os;os.remove('mode.cfg')
+except:
+    print('[KC] mode.cfg 不存在')
+
+import os
+print(os.listdir())
+while True:
+    # 喂狗
+    wdt0.feed()
+
+    # 解析并且使用JSON解析
+    # 处理逻辑
+    if need_readline:
+        # st = time.ticks_ms()
+        print(readline)
+        # data = json.loads(readline)
+        # print('time comsume: %d' % (time.ticks_ms() - st))
+        ParseData(readline)
+        readline = ''
         need_readline = False
-
+            
+        
     ## 图形处理部分 ##
     if (process_callback != None):
         img = process_callback()
@@ -419,17 +469,19 @@ while True:
     
 
     ## 处理按键 ##
-    if (mui.GetRightPressed()):
-        if (mui.showMenu):
-            # 菜单模式
-            if (mui.menuItemSelected < len(mui.menuItems) - 1):
-                mui.menuItemSelected += 1
-            else:
-                mui.menuItemSelected = 0
-    elif (mui.GetLeftPressed()):
-        mui.showMenu = not mui.showMenu
-        if (not mui.showMenu):
-            switch_mode(mui.menuItems[mui.menuItemSelected])
+
+    if (currentItem != None and currentItem.name == KC_MODE_SELF_LEARNING and currentItem.train_status!=1):
+        if (mui.GetRightPressed()):
+            if (mui.showMenu):
+                # 菜单模式
+                if (mui.menuItemSelected < len(mui.menuItems) - 1):
+                    mui.menuItemSelected += 1
+                else:
+                    mui.menuItemSelected = 0
+        elif (mui.GetLeftPressed()):
+            mui.showMenu = not mui.showMenu
+            if (not mui.showMenu):
+                switch_mode(mui.menuItems[mui.menuItemSelected])
         
 
     # print(time.ticks_ms() / 1000)

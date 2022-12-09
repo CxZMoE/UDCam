@@ -17,14 +17,15 @@ ACT_UPDATE_SAVE_NAME = 'update'
 
 class KCameraSelfLearning():
     result = {
-        'id': None,
-        'color': None,
+        'id': 'Unknown',
+        'color': 'Unknown',
         'min_dist': 0
     }
     result_index = 0
     name = 'self_learning'
     classifier_name = ''
     default_load_mode = 0
+    load_mode = 0
     def __init__(self, num, key_save):
         sensor.set_windowing((224, 224))
         fm.register(16, fm.fpioa.GPIOHS8)
@@ -59,12 +60,13 @@ class KCameraSelfLearning():
         # img = img.rotation_corr(z_rotation=90)
         
         color = self.colors_reconize.GetColor(img_return)
-        if self.key_save.value() == 0:  # 如果按键按下
-            self.default_load_mode = 1
-            self.load_save_learn()
-            time.sleep_ms(50)  # 消抖
+        if self.load_mode != 1:
+            if self.key_save.value() == 0 and self.train_status == 0:  # 如果按键按下
+                self.default_load_mode = 1
+                self.load_save_learn()
+                time.sleep_ms(50)  # 消抖
         
-        if self.default_load_mode == 1:
+        if self.default_load_mode == 1 or self.load_mode == 1:
             self.load_self_learning_mode(img_return, img, color)
             return img_return
         if self.train_status == 0:
@@ -124,7 +126,9 @@ class KCameraSelfLearning():
                 ui.DrawString(img_return, 320 - len_str - 5, 187, "训练中...", color=(0,255,0))
             else:
                 # self.result = ('modeobj|Unknown|{}'.format(color)).encode()
-                self.result['id'] = None
+                self.result['id'] = 'Unknown'
+                self.result['color'] = color
+                self.result['min_dist'] = min_dist
                 # print(self.result)
 
             self.save_the_local_system(
@@ -140,7 +144,7 @@ class KCameraSelfLearning():
         print("class num: {} sample num: {}\n".format(
             self.class_num, self.sample_num))
 
-    def load_self_learning_mode(self, img_return, img=None, color=None):  # 加载自学习\
+    def load_self_learning_mode(self, img_return=None, img=None, color=None):  # 加载自学习\
         if img == None:
             try:
                 img = sensor.snapshot()
@@ -155,7 +159,9 @@ class KCameraSelfLearning():
         except Exception as e:
             print('predict err:', e)
             # self.result = ('modeobj|Unknown|{}'.format(color)).encode()
-            self.result['id'] = None
+            self.result['id'] = 'Unknown'
+            self.result['color'] = color
+            self.result['min_dist'] = min_dist
             # lcd.display(img)
             return
 
@@ -165,7 +171,9 @@ class KCameraSelfLearning():
             self.result['color'] = color
             self.result['min_dist'] = min_dist
         else:
-            self.result['id'] = None
+            self.result['id'] = 'Unknown'
+            self.result['color'] = color
+            self.result['min_dist'] = min_dist
         # print("{:.2f}".format(min_dist))
         # print(self.result)
         # lcd.display(img)
@@ -183,6 +191,7 @@ class KCameraSelfLearning():
         self.classifier.save(self.save_name)
 
     def save_the_local_system(self, name, img):
+        # 保持之前先尝试删除文件
         if self.key_save.value() == 0:  # 如果按键按下
             time.sleep_ms(50)  # 消抖
             print('key pressed')
@@ -191,7 +200,8 @@ class KCameraSelfLearning():
                 flash_ls = os.listdir()
                 print('dir:' + str(flash_ls))
                 if name not in flash_ls:
-                    self.classifier.save(name)  # 保存至文件系统
+                    self.train_status = 3
+                    print(self.classifier.save(name))  # 保存至文件系统
                     ui.DrawString(img, 10, 187, "保存成功", color=(0,255,0))
                     del flash_ls
                     return 1

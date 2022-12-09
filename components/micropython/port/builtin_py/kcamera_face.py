@@ -24,8 +24,11 @@ class KCamera_Face():
     name = 'face'
     result = {
         'id': None,
-        'x': 0,
-        'y': 0
+        'x': -1,
+        'y': -1,
+        'w': 0,
+        'h': 0,
+        'score': 0
     }
     def __init__(self):
         ## 使用到的模型
@@ -121,6 +124,9 @@ class KCamera_Face():
                     self.result['id'] = self.custom_names[index]
                     self.result['x'] = face.x() + face.w() // 2
                     self.result['y'] = face.y() + face.h() // 2
+                    self.result['w'] = face.w()
+                    self.result['h'] = face.h()
+                    self.result['score'] = max_score
                 else:
                     # img.draw_string(face.x(), face.y(),
                     #     ("X :%2.1f" % (max_score)),
@@ -128,6 +134,11 @@ class KCamera_Face():
                     # )
                     ui.DrawString(img, face.x(), face.y(), ("X: %2.1f" % (max_score)), color=(0, 255, 0))
                     self.result['id'] = None
+                    self.result['x'] = face.x() + face.w() // 2
+                    self.result['y'] = face.y() + face.h() // 2
+                    self.result['w'] = face.w()
+                    self.result['h'] = face.h()
+                    self.result['score'] = max_score
 
                 # 处理保存人脸按键
                 if self.start_processing:

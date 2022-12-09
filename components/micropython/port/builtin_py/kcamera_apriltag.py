@@ -52,15 +52,28 @@ class KCameraAprilTag():
                 data = {
                     'tag_id': tag.id(),
                     'tag_family': tag.family(),
-                    'cx': cx,
-                    'cy': cy,
-                    'rect': tag.rect(),
+                    'x': cx,
+                    'y': cy,
+                    'w': tag.w(),
+                    'h': tag.h(),
                     'rotation': rotation,
                     'translation_3d': (tag.x_translation(), tag.y_translation(), tag.z_translation()),
-                    'ratation_3d': (self.ToDegree(tag.x_rotation()), self.ToDegree(tag.y_rotation()), self.ToDegree(tag.z_rotation()))
+                    'rotation_3d': (self.ToDegree(tag.x_rotation()), self.ToDegree(tag.y_rotation()), self.ToDegree(tag.z_rotation()))
                 }
                 self.result = data
-                print(data)
+        else:
+            data = {
+                'tag_id': None,
+                'tag_family': None,
+                'x': -1,
+                'y': -1,
+                'w': 0,
+                'h': 0,
+                'rotation': 0,
+                'translation_3d': None,
+                'rotation_3d': None
+            }
+            self.result = data
         return img
     def ToDegree(self, rad):
         return rad * (180 / math.pi)

@@ -24,8 +24,10 @@ class KCamera_ObjectRec():
     # 识别结果
     result = {
         'id': None,
-        'x': 0,
-        'y': 0,
+        'x': -1,
+        'y': -1,
+        'w': 0,
+        'h': 0,
         'count': 0
     }
     def __init__(self):
@@ -84,6 +86,9 @@ class KCamera_ObjectRec():
                 self.result['id'] = None
                 self.result['x'] = cx
                 self.result['y'] = cy
+                self.result['w'] = width
+                self.result['h'] = height
+
                 self.result['count'] = 0
                 return img
             count = 0
@@ -91,15 +96,17 @@ class KCamera_ObjectRec():
                 if item.classid() == closest_index:
                     count += 1
             # self.result = ('%s|%d' % (self.classes[closest_index], count)).encode('utf-8')
-            self.result['id'] = self.classes_intl[closest_index]
-            self.result['x'] = cx
-            self.result['y'] = cy
             self.result['count'] = count
             print_str = ('%s(%d个)' % (self.classes_intl[closest_index], count))
             img.draw_rectangle(0, 210, 320, 30, color=(255,128,0), thickness=1, fill=True)
             ui.DrawString(img, (320 - ui.GetStrLenFixed(print_str)) // 2, 220, print_str)
         else:
             self.result['id'] = None
+            self.result['x'] = -1
+            self.result['y'] = -1
+            self.result['w'] = 0
+            self.result['h'] = 0
+            self.result['count'] = 0
         return img
 
     def __deinit__(self):
