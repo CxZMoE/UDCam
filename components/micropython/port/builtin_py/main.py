@@ -93,6 +93,9 @@ sensor.set_pixformat(sensor.RGB565)
 sensor.set_hmirror(0)
 sensor.set_vflip(1)
 sensor.set_auto_gain(0, 0)
+sensor.set_auto_exposure(False)
+sensor.set_auto_whitebal(False)
+
 sensor.run(1)
 print('[KC] 摄像头初始化完毕')
 
@@ -470,7 +473,7 @@ while True:
 
     ## 处理按键 ##
 
-    if (currentItem != None and currentItem.name == KC_MODE_SELF_LEARNING and currentItem.train_status!=1):
+    if (currentItem == None or (currentItem.name == KC_MODE_SELF_LEARNING and currentItem.train_status!=1) or (currentItem.name != KC_MODE_SELF_LEARNING)):
         if (mui.GetRightPressed()):
             if (mui.showMenu):
                 # 菜单模式
