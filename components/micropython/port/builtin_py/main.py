@@ -81,7 +81,7 @@ def gen_payload(data):
     return json.dumps(data).encode('utf-8')
 
 ## 初始化I2C ##
-i2c = I2C(I2C.I2C0, mode=I2C.MODE_SLAVE, scl=11, sda=12, freq=400000, addr=77,addr_size=7, 
+i2c = I2C(I2C.I2C0, mode=I2C.MODE_SLAVE, scl=11, sda=12, freq=100000, addr=77,addr_size=7, 
     on_receive=on_receive, on_transmit=on_transmit, on_event=on_event)
 
 
