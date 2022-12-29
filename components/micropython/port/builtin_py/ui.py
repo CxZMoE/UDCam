@@ -6,6 +6,10 @@ import time
 SCREEN_WIDTH = const(320)
 SCREEN_HEIGHT = const(240)
 
+LANG_ZH = const(0x0)
+LANG_EN = const(0x1)
+lang = LANG_ZH
+
 fm.register(16, fm.fpioa.GPIOHS8)
 right_key=GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
 fm.fpioa.set_function(25,FPIOA.GPIOHS6)
@@ -13,11 +17,11 @@ left_key = GPIO(GPIO.GPIOHS6,GPIO.IN)
 
 class MUI():
     def __init__(self):
-        self.title = GetIntl('K210摄像头')
+        self.title = 'K210摄像头'
         self.menuItems = []
         self.showMenu = False
         self.menuItemSelected = 0
-
+        
         # 菜单页数
         self.menuPage = 0
 
@@ -26,10 +30,10 @@ class MUI():
     
     def drawMenuBar(self, img):
         img.draw_rectangle(0, 0, 320, 30, color=(255,128,0), thickness=1, fill=True)
-        
-        title_x = (SCREEN_WIDTH - GetStrLenFixed(self.title)) // 2
+        title = GetIntl(self.title)
+        title_x = (SCREEN_WIDTH - GetStrLenFixed(title)) // 2
         # 画标题
-        DrawString(img, title_x, 7, self.title)
+        DrawString(img, title_x, 7, title)
         # 画箭头
         img.draw_arrow(20, 15, 10, 15)
         img.draw_arrow(SCREEN_WIDTH - 20, 15, SCREEN_WIDTH - 10, 15)
@@ -71,9 +75,9 @@ class MUI():
             if page_end > menu_length:
                 page_end = menu_length
             for index in range(page_start, page_end):
-                item = items[index]
-                item_y = marginTop + (items.index(item) - page_start)*item_height
-                if (items.index(item) == self.menuItemSelected):
+                item = items[index][0](items[index][1])
+                item_y = marginTop + (index - page_start)*item_height
+                if (index == self.menuItemSelected):
                     img.draw_rectangle(0, item_y, item_width, item_height, color=(255,50,0), thickness=1, fill=True)
                 else:
                     img.draw_rectangle(0, item_y, item_width, item_height, color=(255,110,0), thickness=1, fill=True)
@@ -81,13 +85,12 @@ class MUI():
                 DrawString(img, (item_width - GetStrLenFixed(item)) // 2, item_y + 7, item)
 
 
-
-    def AddMenuItem(self, item):
-        if (len(item) > 0):
-            self.menuItems.append(item)
-    def DelMenuItem(self, item):
+    def AddMenuItem(self, item, arg):
+        if (len(arg) > 0):
+            self.menuItems.append([item, arg])
+    def DelMenuItem(self, item, arg):
         try:
-            self.menuItems.remove(item)
+            self.menuItems.remove([item, arg])
         except:
             pass
 
@@ -130,10 +133,13 @@ Msgs = {
     "标签识别": {
         "en": "Tag Detection"
     },
+    "版本: 1.0.0": {
+        "en": "Ver: 1.0.0"
+    },
+    "切换语言": {
+        "en": "Change Language"
+    }
 }
-                
-LANG_ZH = const(0x0)
-LANG_EN = const(0x1)
 
 # 使用UTF-8编码
 for key in Msgs.keys():
@@ -141,7 +147,7 @@ for key in Msgs.keys():
     Msgs[key]['zh'] = key
 
 # 获取国际化字段
-def GetIntl(msg, lang=LANG_ZH):
+def GetIntl(msg):
     if lang == LANG_ZH:
         return Msgs[msg]['zh']
     elif lang == LANG_EN:

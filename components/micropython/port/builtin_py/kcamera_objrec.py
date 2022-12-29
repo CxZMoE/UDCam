@@ -71,8 +71,9 @@ class KCamera_ObjectRec():
                 id = item.classid()
                 # 为对象画框
                 img.draw_rectangle(item.rect(), color=(255,128,0), thickness=1)
-                img.draw_rectangle(x, y, ui.GetStrLenFixed(self.classes_intl[id]), 16, color=(255,128,0), thickness=1, fill=True)
-                ui.DrawString(img, x, y, self.classes_intl[id])
+                name = self.classes_intl[id] if ui.lang == ui.LANG_ZH else self.classes[id]
+                img.draw_rectangle(x, y, ui.GetStrLenFixed(name), 16, color=(255,128,0), thickness=1, fill=True)
+                ui.DrawString(img, x, y, name)
                 self.classes_count[id] += 1
 
                 # 找最近的
@@ -97,9 +98,10 @@ class KCamera_ObjectRec():
                 if item.classid() == closest_index:
                     count += 1
             # self.result = ('%s|%d' % (self.classes[closest_index], count)).encode('utf-8')
-            self.result['id'] = self.classes_intl[closest_index]
+            name = self.classes_intl[closest_index] if ui.lang == ui.LANG_ZH else self.classes[closest_index]
+            self.result['id'] = name
             self.result['count'] = count
-            print_str = ('%s(%d个)' % (self.classes_intl[closest_index], count))
+            print_str = ('%s(%d%s)' % (name, count,  "个" if ui.lang == ui.LANG_ZH else ""))
             img.draw_rectangle(0, 210, 320, 30, color=(255,128,0), thickness=1, fill=True)
             ui.DrawString(img, (320 - ui.GetStrLenFixed(print_str)) // 2, 220, print_str)
         else:

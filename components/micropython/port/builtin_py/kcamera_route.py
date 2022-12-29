@@ -117,7 +117,7 @@ class FindRouteBlobs():
         self.result['cross_y'] = cy
         # print(self.result)
         # canvas.draw_string(0, 0, turn_type, color=(0))
-        ui.DrawString(canvas, 10, 30, "路口类型: " + turn_type)
+        ui.DrawString(canvas, 10, 30, ("路口类型: " if ui.lang == ui.LANG_ZH else "Type: ") + turn_type)
     last_cx = 0
     last_cy = 0
 

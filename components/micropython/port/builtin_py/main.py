@@ -141,14 +141,16 @@ mui = MUI()
 # mui.AddMenuItem('Classifier')
 # mui.AddMenuItem('Face Detection')
 # mui.AddMenuItem('Binary Code')
-mui.AddMenuItem(ui.GetIntl('物体识别'))
-mui.AddMenuItem(ui.GetIntl('分类识别'))
-mui.AddMenuItem(ui.GetIntl('人脸识别'))
-mui.AddMenuItem(ui.GetIntl('二维码识别'))
-mui.AddMenuItem(ui.GetIntl('条形码识别'))
-mui.AddMenuItem(ui.GetIntl('颜色识别'))
-mui.AddMenuItem(ui.GetIntl('循迹识别'))
-mui.AddMenuItem(ui.GetIntl('标签识别'))
+mui.AddMenuItem(ui.GetIntl, '物体识别')
+mui.AddMenuItem(ui.GetIntl, '分类识别')
+mui.AddMenuItem(ui.GetIntl, '人脸识别')
+mui.AddMenuItem(ui.GetIntl, '二维码识别')
+mui.AddMenuItem(ui.GetIntl, '条形码识别')
+mui.AddMenuItem(ui.GetIntl, '颜色识别')
+mui.AddMenuItem(ui.GetIntl, '循迹识别')
+mui.AddMenuItem(ui.GetIntl, '标签识别')
+mui.AddMenuItem(ui.GetIntl, '切换语言')
+mui.AddMenuItem(ui.GetIntl, '版本: 1.0.0')
 
 
 ## 数据处理线程 ##
@@ -201,7 +203,7 @@ def switch_mode(mode):
             currentItem = mode.KCamera_ObjectRec()
             currentMode = KC_MODE_OBJ
         process_callback = currentItem.process
-        mui.setTitle(ui.GetIntl('物体识别'))
+        mui.setTitle('物体识别')
     elif (mode == mui.menuItems[1]):
         import kcamera_selflearning as mode
         # 开始分类识别
@@ -211,7 +213,7 @@ def switch_mode(mode):
             currentMode = KC_MODE_SELF_LEARNING
         currentItem.load_classifier()
         process_callback = currentItem.star_learn
-        mui.setTitle(ui.GetIntl('分类识别'))
+        mui.setTitle('分类识别')
     elif (mode == mui.menuItems[2]):
         import kcamera_face as mode
         # 开始人脸识别
@@ -220,7 +222,7 @@ def switch_mode(mode):
             currentItem = mode.KCamera_Face()
             currentMode = KC_MODE_HUMAN_FACE
             process_callback = currentItem.Fr
-            mui.setTitle(ui.GetIntl('人脸识别'))
+            mui.setTitle('人脸识别')
     elif (mode == mui.menuItems[3]):
         import kcamera_qrcode as mode
         # 开始二维码识别
@@ -229,7 +231,7 @@ def switch_mode(mode):
             currentItem = mode.KCameraQRCode()
             currentMode = KC_MODE_QRCODE
         process_callback = currentItem.QrCode
-        mui.setTitle(ui.GetIntl('二维码识别'))
+        mui.setTitle('二维码识别')
     elif (mode == mui.menuItems[4]):
         import kcamera_qrcode as mode
         # 开始条形码识别
@@ -238,7 +240,7 @@ def switch_mode(mode):
             currentItem = mode.KCameraQRCode()
             currentMode = KC_MODE_QRCODE
         process_callback = currentItem.BarCode
-        mui.setTitle(ui.GetIntl('条形码识别'))
+        mui.setTitle('条形码识别')
     elif (mode == mui.menuItems[5]):
         import kcamera_color as mode
         # 开始颜色识别
@@ -247,7 +249,7 @@ def switch_mode(mode):
             currentItem = mode.ColorUtils()
             currentMode = KC_MODE_COLOR
         process_callback = currentItem.CheckColor
-        mui.setTitle(ui.GetIntl('颜色识别'))
+        mui.setTitle('颜色识别')
     elif (mode == mui.menuItems[6]):
         import kcamera_route as mode
         # 开始循迹识别
@@ -256,7 +258,7 @@ def switch_mode(mode):
             currentItem = mode.FindRouteBlobs()
             currentMode = KC_MODE_ROUTE
         process_callback = currentItem.Process
-        mui.setTitle(ui.GetIntl('循迹识别'))
+        mui.setTitle('循迹识别')
     elif (mode == mui.menuItems[7]):
         import kcamera_apriltag as mode
         # 开始标签识别
@@ -265,7 +267,7 @@ def switch_mode(mode):
             currentItem = mode.KCameraAprilTag()
             currentMode = KC_MODE_AprilTag
         process_callback = currentItem.Process
-        mui.setTitle(ui.GetIntl('标签识别'))
+        mui.setTitle('标签识别')
 
 # 执行回调
 
@@ -296,7 +298,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_SELF_LEARNING
                 currentItem.load_classifier()
                 process_callback = currentItem.star_learn
-                mui.setTitle(ui.GetIntl('分类识别'))
+                mui.setTitle('分类识别')
                 i2cTxBuffer = b'{"status": 200}'
             elif (act == mode.KC_ACT_LOADMODE):
                 # 开始加载分类器模式
@@ -310,7 +312,7 @@ def ParseData(jsonstr):
                     currentItem.load_mode = 1
                     process_callback = currentItem.star_learn
                     # mui.setTitle('Classifier Mode[%s]' % (str(i2cRxParsed[2]) + '.classifier'))
-                    mui.setTitle(ui.GetIntl('分类识别'))
+                    mui.setTitle('分类识别')
                 else:
                     print('[KC] 加载分类器失败: 参数不全')
             elif (act == mode.ACT_UPDATE_SAVE_NAME):
@@ -337,7 +339,7 @@ def ParseData(jsonstr):
                     currentItem = mode.KCamera_ObjectRec()
                     currentMode = KC_MODE_OBJ
                 process_callback = currentItem.process
-                mui.setTitle(ui.GetIntl('物体识别'))
+                mui.setTitle('物体识别')
                 i2cTxBuffer = b'{"status": 200}'
 
         elif (mode_to_change == KC_MODE_HUMAN_FACE):
@@ -350,7 +352,7 @@ def ParseData(jsonstr):
                     currentItem = mode.KCamera_Face()
                     currentMode = KC_MODE_HUMAN_FACE
                     process_callback = currentItem.Fr
-                    mui.setTitle(ui.GetIntl('人脸识别'))
+                    mui.setTitle('人脸识别')
                     i2cTxBuffer = b'{"status": 200}'
             elif (act == 'add'):
                 # 添加保存的人脸
@@ -379,7 +381,7 @@ def ParseData(jsonstr):
                     currentItem = mode.KCameraQRCode()
                     currentMode = KC_MODE_QRCODE
                     process_callback = currentItem.QrCode
-                    mui.setTitle(ui.GetIntl('二维码识别'))
+                    mui.setTitle('二维码识别')
                     i2cTxBuffer = b'{"status": 200}'
 
         elif (mode_to_change == KC_MODE_BARCODE):
@@ -391,7 +393,7 @@ def ParseData(jsonstr):
                     currentItem = mode.KCameraQRCode()
                     currentMode = KC_MODE_BARCODE
                     process_callback = currentItem.BarCode
-                    mui.setTitle(ui.GetIntl('条形码识别'))
+                    mui.setTitle('条形码识别')
                     i2cTxBuffer = b'{"status": 200}'
 
         elif(mode_to_change == KC_MODE_COLOR):
@@ -403,7 +405,7 @@ def ParseData(jsonstr):
                     currentItem = mode.ColorUtils()
                     currentMode = KC_MODE_COLOR
                 process_callback = currentItem.CheckColor
-                mui.setTitle(ui.GetIntl('颜色识别'))
+                mui.setTitle('颜色识别')
                 i2cTxBuffer = b'{"status": 200}'
         elif(mode_to_change == KC_MODE_ROUTE):
             if (act == KC_ACT_START):
@@ -414,7 +416,7 @@ def ParseData(jsonstr):
                     currentItem = mode.FindRouteBlobs()
                     currentMode = KC_MODE_ROUTE
                 process_callback = currentItem.Process
-                mui.setTitle(ui.GetIntl('循迹识别'))
+                mui.setTitle('循迹识别')
                 i2cTxBuffer = b'{"status": 200}'
         elif(mode_to_change == KC_MODE_AprilTag):
             if (act == KC_ACT_START):
@@ -425,7 +427,7 @@ def ParseData(jsonstr):
                     currentItem = mode.KCameraAprilTag()
                     currentMode = KC_MODE_AprilTag
                 process_callback = currentItem.Process
-                mui.setTitle(ui.GetIntl('标签识别'))
+                mui.setTitle('标签识别')
                 i2cTxBuffer = b'{"status": 200}'
 
         # 保存到文件
@@ -507,7 +509,10 @@ while True:
         elif (mui.GetLeftPressed()):
             mui.showMenu = not mui.showMenu
             if (not mui.showMenu):
-                switch_mode(mui.menuItems[mui.menuItemSelected])
+                if mui.menuItemSelected < 8:
+                    switch_mode(mui.menuItems[mui.menuItemSelected])
+                elif mui.menuItemSelected == 8:
+                    ui.lang = ui.LANG_ZH if ui.lang == ui.LANG_EN else ui.LANG_EN
         
 
     # print(time.ticks_ms() / 1000)
