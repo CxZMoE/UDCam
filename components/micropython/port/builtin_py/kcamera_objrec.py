@@ -62,6 +62,9 @@ class KCamera_ObjectRec():
             for i in range(len(items)):
                 item = items[i]
                 x,y,width,height = item.rect()
+                
+                self.result['w'] = width
+                self.result['h'] = height
                 # 去除宽度小于50px的
                 # if width < 50 or height < 50:
                     # continue
@@ -75,6 +78,9 @@ class KCamera_ObjectRec():
                 # 找最近的
                 cx = x + width // 2
                 cy = y + height // 2
+                self.result['x'] = cx
+                self.result['y'] = cy
+
                 d = self.VectorLen(self.center, (cx, cy))
                 if d < closest_d:
                     closest_d = d
@@ -84,11 +90,6 @@ class KCamera_ObjectRec():
             if closest_index < 0:
                 # self.result = ('unknown|0').encode('utf-8')
                 self.result['id'] = None
-                self.result['x'] = cx
-                self.result['y'] = cy
-                self.result['w'] = width
-                self.result['h'] = height
-
                 self.result['count'] = 0
                 return img
             count = 0
@@ -96,6 +97,7 @@ class KCamera_ObjectRec():
                 if item.classid() == closest_index:
                     count += 1
             # self.result = ('%s|%d' % (self.classes[closest_index], count)).encode('utf-8')
+            self.result['id'] = self.classes_intl[closest_index]
             self.result['count'] = count
             print_str = ('%s(%d个)' % (self.classes_intl[closest_index], count))
             img.draw_rectangle(0, 210, 320, 30, color=(255,128,0), thickness=1, fill=True)

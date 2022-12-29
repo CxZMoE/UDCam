@@ -57,19 +57,22 @@ def on_event(event):
     if event == I2C_TRANS_START:
         pass
     if event == I2C_TRANS_END:
-        global i2cTxIndex
-        i2cTxIndex = 0
+        pass
 
 def on_transmit():
     global i2cTxIndex
+    global i2cTxBuffer
     # 当Master使用Read函数的时候
     # print('[KC] Tx Buffer: {}'.format(i2cTxBuffer))
     # print('[KC] Tx Buffer len: {}'.format(len(i2cTxBuffer)))
-    if (i2cTxIndex < len(i2cTxBuffer)):
-        i2cTxIndex = i2cTxIndex + 1
-        # print('[KC] Send With Index: %d' % (i2cTxIndex - 1))
-        # print('[KC] Send: {}'.format(i2cTxBuffer[i2cTxIndex - 1]))
-        return i2cTxBuffer[i2cTxIndex - 1]
+    data_len = len(i2cTxBuffer)
+    if (data_len != 0 and i2cTxIndex < data_len):
+        data = i2cTxBuffer[i2cTxIndex]
+        i2cTxIndex += 1
+        if (i2cTxIndex == data_len):
+            i2cTxBuffer = b''
+            i2cTxIndex = 0
+        return data
     return 0x0a
 
 import json
@@ -127,7 +130,7 @@ if ide:
     import lcd
     lcd.init(color=lcd.PINK)
     repl = UART.repl_uart()
-    repl.init(1500000, 8, None, 1, read_buf_len=2048, ide=True, from_ide=False)
+    repl.init(1000000, 8, None, 1, read_buf_len=2048, ide=True, from_ide=False)
     sys.exit()
 del ide
 
@@ -167,11 +170,15 @@ from machine import Timer
 rx_timer = Timer(0,Timer.CHANNEL0,mode=Timer.MODE_PERIODIC,period=1, unit=Timer.UNIT_MS,callback=data_thread,arg=None,start=True)
 
 ## 看门狗 ##
-wdt0 = WDT(id=1, timeout=3000)
+# wdt0 = WDT(id=1, timeout=3000)
 
 # 主循环
 def clearItem():
+    global i2cTxIndex
+    global i2cTxBuffer
     global currentItem
+    i2cTxBuffer = b''
+    i2cTxIndex = 0
     if (currentItem != None):
         print('[KC] 清除残留模型')
         currentItem.__deinit__() # 解构
@@ -266,7 +273,8 @@ def ParseData(jsonstr):
     global currentMode
     global currentItem
     global process_callback
-
+    global i2cTxBuffer
+    global i2cTxIndex
     # 解析并且使用JSON解析 
     try:
         request = json.loads(jsonstr)
@@ -289,6 +297,7 @@ def ParseData(jsonstr):
                 currentItem.load_classifier()
                 process_callback = currentItem.star_learn
                 mui.setTitle(ui.GetIntl('分类识别'))
+                i2cTxBuffer = b'{"status": 200}'
             elif (act == mode.KC_ACT_LOADMODE):
                 # 开始加载分类器模式
                 if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
@@ -329,6 +338,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_OBJ
                 process_callback = currentItem.process
                 mui.setTitle(ui.GetIntl('物体识别'))
+                i2cTxBuffer = b'{"status": 200}'
 
         elif (mode_to_change == KC_MODE_HUMAN_FACE):
             # 人脸识别
@@ -341,6 +351,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_HUMAN_FACE
                     process_callback = currentItem.Fr
                     mui.setTitle(ui.GetIntl('人脸识别'))
+                    i2cTxBuffer = b'{"status": 200}'
             elif (act == 'add'):
                 # 添加保存的人脸
                 if (data != None):
@@ -369,6 +380,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_QRCODE
                     process_callback = currentItem.QrCode
                     mui.setTitle(ui.GetIntl('二维码识别'))
+                    i2cTxBuffer = b'{"status": 200}'
 
         elif (mode_to_change == KC_MODE_BARCODE):
             if (act == KC_ACT_START):
@@ -380,6 +392,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_BARCODE
                     process_callback = currentItem.BarCode
                     mui.setTitle(ui.GetIntl('条形码识别'))
+                    i2cTxBuffer = b'{"status": 200}'
 
         elif(mode_to_change == KC_MODE_COLOR):
             if (act == KC_ACT_START):
@@ -391,6 +404,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_COLOR
                 process_callback = currentItem.CheckColor
                 mui.setTitle(ui.GetIntl('颜色识别'))
+                i2cTxBuffer = b'{"status": 200}'
         elif(mode_to_change == KC_MODE_ROUTE):
             if (act == KC_ACT_START):
                 import kcamera_route as mode
@@ -401,6 +415,7 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_ROUTE
                 process_callback = currentItem.Process
                 mui.setTitle(ui.GetIntl('循迹识别'))
+                i2cTxBuffer = b'{"status": 200}'
         elif(mode_to_change == KC_MODE_AprilTag):
             if (act == KC_ACT_START):
                 import kcamera_apriltag as mode
@@ -411,11 +426,19 @@ def ParseData(jsonstr):
                     currentMode = KC_MODE_AprilTag
                 process_callback = currentItem.Process
                 mui.setTitle(ui.GetIntl('标签识别'))
+                i2cTxBuffer = b'{"status": 200}'
 
-    # 保存到文件
-    f = open('mode.cfg', 'w')
-    f.write(jsonstr)
-    f.close()
+        # 保存到文件
+        f = open('mode.cfg', 'w')
+        f.write(jsonstr)
+        f.close()
+
+    elif (method == 'get'):
+        print('user request get...')
+        if (currentItem != None):
+            i2cTxBuffer = gen_payload(currentItem.result)
+            i2cTxIndex = 0
+            print(i2cTxBuffer)
 
 # 开机的时候解析上次退出保存的数据
 try:
@@ -430,7 +453,7 @@ import os
 print(os.listdir())
 while True:
     # 喂狗
-    wdt0.feed()
+    # wdt0.feed()
 
     # 解析并且使用JSON解析
     # 处理逻辑
@@ -447,10 +470,10 @@ while True:
     ## 图形处理部分 ##
     if (process_callback != None):
         img = process_callback()
-        if (currentItem != None):
-            i2cTxBuffer = gen_payload(currentItem.result)
-        else:
-            i2cTxBuffer = b'{"code": 404}'
+        # if (currentItem != None):
+        #     i2cTxBuffer = gen_payload(currentItem.result)
+        # else:
+        #     i2cTxBuffer = b'{"code": 404}'
     else:
         # 没有选择模式的时候直接显示摄像头画面
         sensor.set_windowing((320, 240))
