@@ -10,18 +10,26 @@ LANG_ZH = const(0x0)
 LANG_EN = const(0x1)
 lang = LANG_ZH
 
-fm.register(16, fm.fpioa.GPIOHS8)
-right_key=GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
-fm.fpioa.set_function(25,FPIOA.GPIOHS6)
-left_key = GPIO(GPIO.GPIOHS6,GPIO.IN)
+fm.register(35, fm.fpioa.GPIOHS8)
+fm.register(28, fm.fpioa.GPIOHS5)
+right_key=GPIO(GPIO.GPIOHS8,GPIO.IN, GPIO.PULL_UP)
+left_key = GPIO(GPIO.GPIOHS5,GPIO.IN, GPIO.PULL_UP)
 
+# 补光灯按键
+from modules import ws2812
+class_ws2812 = ws2812(32,4)
+class_ws2812.set_led(0,(0x00,0x00,0x00))
+class_ws2812.set_led(1,(0x00,0x00,0x00))
+class_ws2812.set_led(2,(0x00,0x00,0x00))
+class_ws2812.set_led(3,(0x00,0x00,0x00))
+class_ws2812.display()
 class MUI():
     def __init__(self):
         self.title = 'K210摄像头'
         self.menuItems = []
         self.showMenu = False
         self.menuItemSelected = 0
-        
+        self.led_on = False
         # 菜单页数
         self.menuPage = 0
 
@@ -48,8 +56,19 @@ class MUI():
             return True
         return False
     def GetRightPressed(self):
+        t = time.ticks_ms()
         if (right_key.value() == 0):
             while (right_key.value() != 1):
+                if time.ticks_ms() - t > 2000:
+                    if self.led_on:
+                        for i in range(4):
+                            class_ws2812.set_led(i,(0x00,0x00,0x00))
+                    else:
+                        for i in range(4):
+                            class_ws2812.set_led(i,(0xff,0xff,0xff))
+                    self.led_on = ~self.led_on
+                    class_ws2812.display()
+                    t = time.ticks_ms()
                 pass
             return True
         return False

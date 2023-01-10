@@ -28,7 +28,7 @@ class KCameraSelfLearning():
     load_mode = 0
     def __init__(self, num, key_save):
         sensor.set_windowing((224, 224))
-        fm.register(16, fm.fpioa.GPIOHS8)
+        fm.register(35, fm.fpioa.GPIOHS8)
         
         self.update(num)
         self.THRESHOLD = 8
@@ -37,7 +37,7 @@ class KCameraSelfLearning():
         self.key = GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
         self.key_save = key_save
         # 加载模型文件
-        self.model = kpu.load(0x300000)
+        self.model = kpu.load('/sd/models/self_learn_classifier_lite.smodel')
 
         self.update_save_name('default.classifier')
         self.cap_num = 0
@@ -123,7 +123,7 @@ class KCameraSelfLearning():
                 str_print = self.result['id']
                 len_str = ui.GetStrLenFixed(str_print)
                 img_return.draw_rectangle(320 - len_str - 20, 180, len_str + 20, 30, color=(255,128,0), thickness=1, fill=True)
-                ui.DrawString(img_return, 320 - len_str - 5, 187, "训练中...", color=(0,255,0))
+                ui.DrawString(img_return, 320 - len_str - 5, 187, str_print, color=(0,255,0))
             else:
                 # self.result = ('modeobj|Unknown|{}'.format(color)).encode()
                 self.result['id'] = 'Unknown'

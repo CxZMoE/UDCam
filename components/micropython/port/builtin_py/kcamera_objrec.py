@@ -33,7 +33,7 @@ class KCamera_ObjectRec():
     def __init__(self):
         sensor.set_windowing((320, 240))
         # 首先加载物体的模型(KModel)
-        self.kpu_net_obj = kpu.load(0x600000)
+        self.kpu_net_obj = kpu.load('/sd/models/YoloV2-Tiny20-ClassesObjectDetection.smodel')
         kpu.init_yolo2(self.kpu_net_obj, 0.5, 0.3, 5, self.anchor)
         self.center = (320//2, 240//2)
     

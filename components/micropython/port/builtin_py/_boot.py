@@ -3,6 +3,37 @@ import os, sys, time
 sys.path.append('')
 sys.path.append('.')
 
+
+# from modules import ws2812
+# class_ws2812 = ws2812(32,4)
+# r=0
+# dir = True
+# while True:
+#     if dir:
+#         r += 1
+#     else:
+#         r -= 1
+#     if r>=255:
+#         r = 255
+#         dir = False
+#     elif r<0:
+#         r = 0
+#         dir = True
+#     for i in range(4):
+#         a = class_ws2812.set_led(i,(r,r,r))
+#     a=class_ws2812.display()
+
+# from modules import ws2812
+# class_ws2812 = ws2812(32 ,30)
+# for i in range(4):
+#     class_ws2812.set_led(i,(0xff,0,0))
+# class_ws2812.display()
+# # SD卡
+# from machine import SDCard
+# from machine import SPI
+# spi = machine.SPI(1, mode=SPI.MODE_MASTER, baudrate=500000, polarity=0, phase=0, bits=8, firstbit=SPI.MSB, sck=24, mosi=25, miso=14, cs0=26)
+# sd = SDCard(1, 26)
+
 # chdir to "/sd" or "/flash"
 devices = os.listdir("/")
 if "sd" in devices:

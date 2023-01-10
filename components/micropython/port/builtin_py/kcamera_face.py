@@ -8,7 +8,7 @@ from fpioa_manager import fm
 import gc
 import ui
 # 设置按键
-fm.register(16, fm.fpioa.GPIOHS8)
+fm.register(35, fm.fpioa.GPIOHS8)
 key_gpio=GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
 
 # 人脸检测的锚点
@@ -33,12 +33,14 @@ class KCamera_Face():
     def __init__(self):
         ## 使用到的模型
         # 1.人脸检测模型
-        self.task_fd = kpu.load(0x400000)
+        self.task_fd = kpu.load('/sd/models/FaceDetection.smodel')
         # 2.人脸关键点检测模型
-        self.task_ld = kpu.load(0x47D000)
+        self.task_ld = kpu.load('/sd/models/FaceLandmarkDetection.smodel')
         # 3.人脸特征提取模型
-        self.task_fe = kpu.load(0x4FA000)
+        self.task_fe = kpu.load('/sd/models/FeatureExtraction.smodel')
+        print('run taskfd')
         kpu.init_yolo2(self.task_fd, 0.5, 0.3, 5, anchor)
+        print('run taskfd end')
         # 需要一张照片
         self.img_lcd = image.Image()
         # 然后裁剪成 (128, 128) 大小

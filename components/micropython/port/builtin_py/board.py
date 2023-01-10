@@ -17,5 +17,5 @@ if tmp != None:
 else:
     print('[Warning] Not loaded from /flash/config.json to board_info.')
     board_info.load({
-      'BOOT_KEY': 16,
+      'BOOT_KEY': 35,
     })            

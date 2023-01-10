@@ -11,7 +11,7 @@
 #include "utils.h"
 #include "global_config.h"
 
-#define MAIX_SDCARD_DEBUG 0
+#define MAIX_SDCARD_DEBUG 1
 #if MAIX_SDCARD_DEBUG == 1
 #include "printf.h"
 #define debug_print(x, arg...) printk(x, ##arg)
@@ -48,11 +48,22 @@
 #define SD_CMD58 58  /*!< CMD58 = 0x58 */
 #define SD_CMD59 59  /*!< CMD59 = 0x59 */
 
+
+// typedef struct
+// {
+//     int mosi_pin;
+//     int miso_pin;
+//     int sclk_pin;
+//     int cs_pin;
+//     int cs_gpio_num;
+
+// } sdcard_config_t;
 sdcard_config_t config = { // see struct sdcard_config_t
 #ifdef CONFIG_BOARD_M5STICK
     33, 31, 30, 32, SD_CS_PIN,
 #else
-    28, 26, 27, 29, SD_CS_PIN,
+    // 28, 26, 27, 29, SD_CS_PIN,
+    25, 14, 24, 26, SD_CS_PIN
 #endif
 };
 
