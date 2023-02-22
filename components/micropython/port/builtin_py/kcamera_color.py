@@ -58,9 +58,14 @@ class ColorUtils():
         # 默认ROI为中间20x20的区域
         self.roi = (160-10, 120-10, 20, 20)
         self.result = {
-            'color': None,  # 颜色预判数值
-            'rgb': None     # RGB数值
+            # 'color': None,  # 颜色预判数值
+            'rgb': None,     # RGB数值
+            'x': 160,
+            'y': 120,
+            'w': 0,
+            'h': 0
         }
+        self.threhold = [(0,80,-70,-10,-0,30)]
         
     def GetLAB(self, img):
         statistics = img.get_statistics(roi = self.roi)
@@ -125,54 +130,53 @@ class ColorUtils():
         # Calc Len
         return math.sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2])
 
-    def CheckColor(self, rgb=None):
-        img = sensor.snapshot()
-        if rgb == None:
-            rgb = self.GetRGB(img)
+    # def CheckColor(self, rgb=None):
+    #     img = sensor.snapshot()
+    #     if rgb == None:
+    #         rgb = self.GetRGB(img)
         
-        color = 255
-        index = 0
-        if len(rgb) == 3:  
-            for color_index in range(len(COLORS)):
-                d_color = self.VectorLen(rgb, COLORS[color_index])
-                # 找出最相似的颜色
-                if d_color < color:
-                    color = d_color
-                    index = color_index
+    #     color = 255
+    #     index = 0
+    #     if len(rgb) == 3:  
+    #         for color_index in range(len(COLORS)):
+    #             d_color = self.VectorLen(rgb, COLORS[color_index])
+    #             # 找出最相似的颜色
+    #             if d_color < color:
+    #                 color = d_color
+    #                 index = color_index
 
-        # self.result = COLOR_TAGS[index].encode('utf-8')
-        self.result['color'] = COLOR_TAGS[index]
-        self.result['rgb'] = rgb
+    #     # self.result = COLOR_TAGS[index].encode('utf-8')
+    #     self.result['color'] = COLOR_TAGS[index]
+    #     self.result['rgb'] = rgb
 
-        # str_print = ('(%d,%d,%d)' % (rgb[0], rgb[1], rgb[2])).encode('utf-8')
+    #     # str_print = ('(%d,%d,%d)' % (rgb[0], rgb[1], rgb[2])).encode('utf-8')
 
-        # 右下角画结果
-        str_print = self.result['color']
-        len_str = ui.GetStrLenFixed(str_print)
-        # img.draw_rectangle(320 - len_str - 20, 180, len_str + 20, 30, color=(255,128,0), thickness=1, fill=True)
-        ui.DrawString(img, (320-len_str), 187, str_print, color=rgb)
-        # img.draw_string(320 - len_str - 5, 187, str_print, color=(255,255,255), scale=1, x_spacing=0, y_spacing=0, mono_space=True)
-        return img
+    #     # 右下角画结果
+    #     str_print = self.result['color']
+    #     len_str = ui.GetStrLenFixed(str_print)
+    #     # img.draw_rectangle(320 - len_str - 20, 180, len_str + 20, 30, color=(255,128,0), thickness=1, fill=True)
+    #     ui.DrawString(img, (320-len_str), 187, str_print, color=rgb)
+    #     # img.draw_string(320 - len_str - 5, 187, str_print, color=(255,255,255), scale=1, x_spacing=0, y_spacing=0, mono_space=True)
+    #     return img
 
-    def CheckColorLAB(self):
+    def CheckColor(self):
         img = sensor.snapshot()
-        img.draw_rectangle(self.roi, color=(0,255,0))
         final_blobs = []
-        for color in LAB_COLORS:
-            blobs = img.find_blobs(color, roi=self.roi)
-            blob_max = None
-            if blobs:
-                area_max = 0
-                for blob in blobs:
-                    # 找出面积最大的色块
-                    area = blob.area()
-                    if area_max < area:
-                        area_max = area
-                        blob_max = blob
-                # 添加当前颜色的最大面积到列表中
-                final_blobs.append(blob_max)
-            else:
-                final_blobs.append(None)
+        # for color in LAB_COLORS:
+        blobs = img.find_blobs(self.threhold)
+        blob_max = None
+        area_max = 0
+        if blobs:
+            for blob in blobs:
+                # 找出面积最大的色块
+                area = blob.area()
+                if area_max < area:
+                    area_max = area
+                    blob_max = blob
+            # 添加当前颜色的最大面积到列表中
+            final_blobs.append(blob_max)
+        else:
+            final_blobs.append(None)
 
         # 找出距离和面积均最大的方块
         max_blob = final_blobs[0]
@@ -192,13 +196,20 @@ class ColorUtils():
                         max_blob = blob
 
         # 画对象
-        if max_blob != None:
-            img.draw_rectangle(max_blob.rect(), color=(255,255,0))
+        if max_blob != None and area_max > 100:
+            rect = max_blob.rect()
+            img.draw_rectangle(rect, color=(255,255,0))
         # 右下角画结果
-        self.result['color'] = COLOR_TAGS[final_blobs.index(max_blob)]
-        str_print = self.result['color']
-        len_str = ui.GetStrLenFixed(str_print)
-        ui.DrawString(img, (320-len_str), 187, str_print, color=(255,255,0))
+        # self.result['color'] = COLOR_TAGS[final_blobs.index(max_blob)]
+        # str_print = self.result['color']
+        # len_str = ui.GetStrLenFixed(str_print)
+        # ui.DrawString(img, (320-len_str), 187, str_print, color=(255,255,0))
+            self.result['x'] = max_blob.cx()
+            self.result['y'] = max_blob.cy()
+            self.result['w'] = rect[2]
+            self.result['h'] = rect[3]
+        self.result['rgb'] = self.GetRGB(img)
+        img.draw_rectangle(self.roi, color=(0,255,0))
         return img
 
 

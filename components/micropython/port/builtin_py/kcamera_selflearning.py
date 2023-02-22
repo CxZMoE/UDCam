@@ -53,7 +53,7 @@ class KCameraSelfLearning():
         except:
             return
         
-        img.pix_to_ai()
+        # img.pix_to_ai()
         # img = img_return.copy(roi=(48, 8, 224, 224))
         img_return = img.cut(0, 28, 224, 168)
         img_return = img_return.resize(320, 240)
@@ -73,8 +73,6 @@ class KCameraSelfLearning():
             if self.key.value() == 0:
                 time.sleep_ms(30)
                 if self.key.value() == 0 and (self.last_btn_status == 1) and (time.ticks_ms() - self.last_cap_time > 500):
-                    print(img)
-                    print(img_return)
                     self.last_btn_status = 0
                     self.last_cap_time = time.ticks_ms()
                     if self.cap_num < self.class_num:
@@ -123,7 +121,7 @@ class KCameraSelfLearning():
                 str_print = self.result['id']
                 len_str = ui.GetStrLenFixed(str_print)
                 img_return.draw_rectangle(320 - len_str - 20, 180, len_str + 20, 30, color=(255,128,0), thickness=1, fill=True)
-                ui.DrawString(img_return, 320 - len_str - 5, 187, "训练中...", color=(0,255,0))
+                ui.DrawString(img_return, 320 - len_str - 5, 187, str_print, color=(0,255,0))
             else:
                 # self.result = ('modeobj|Unknown|{}'.format(color)).encode()
                 self.result['id'] = 'Unknown'
