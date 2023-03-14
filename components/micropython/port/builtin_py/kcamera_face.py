@@ -33,11 +33,15 @@ class KCamera_Face():
     def __init__(self):
         ## 使用到的模型
         # 1.人脸检测模型
-        self.task_fd = kpu.load('/sd/models/FaceDetection.smodel')
+        # self.task_fd = kpu.load('/sd/models/FaceDetection.smodel')
+        self.task_fd = kpu.load(0x400000)
         # 2.人脸关键点检测模型
-        self.task_ld = kpu.load('/sd/models/FaceLandmarkDetection.smodel')
+        # self.task_ld = kpu.load('/sd/models/FaceLandmarkDetection.smodel')
+        self.task_ld = kpu.load(0x47D000)
         # 3.人脸特征提取模型
-        self.task_fe = kpu.load('/sd/models/FeatureExtraction.smodel')
+        # self.task_fe = kpu.load('/sd/models/FeatureExtraction.smodel')
+        self.task_fe = kpu.load(0x4FA000)
+        
         print('run taskfd')
         kpu.init_yolo2(self.task_fd, 0.5, 0.3, 5, anchor)
         print('run taskfd end')

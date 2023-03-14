@@ -37,11 +37,13 @@ sys.path.append('.')
 # chdir to "/sd" or "/flash"
 devices = os.listdir("/")
 if "sd" in devices:
+    print('have sd card')
     os.chdir("/sd")
     sys.path.append('/sd')
 else:
+    print('no sd card')
     os.chdir("/flash")
-sys.path.append('/flash')
+    sys.path.append('/flash')
 del devices
 
 print(" init end") # for IDE

@@ -37,8 +37,9 @@ class KCameraSelfLearning():
         self.key = GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
         self.key_save = key_save
         # 加载模型文件
-        self.model = kpu.load('/sd/models/self_learn_classifier_lite.smodel')
-
+        # self.model = kpu.load('/sd/models/self_learn_classifier_lite.smodel')
+        self.model = kpu.load(0x300000)
+        
         self.update_save_name('default.classifier')
         self.cap_num = 0
         self.train_status = 0
