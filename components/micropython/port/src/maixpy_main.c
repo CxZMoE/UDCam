@@ -442,7 +442,7 @@ int sd_preload(int core)
 {
   sd_preinit_config();
   bool sd_is_ready = false;
-  for (int i = 0; i < 30; i++)
+  for (int i = 0; i < 3; i++)
   {
     // will wait 3s for sd
     if (0 == sd_init())

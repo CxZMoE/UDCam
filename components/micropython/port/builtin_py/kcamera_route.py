@@ -69,12 +69,12 @@ class FindRouteBlobs():
                 'blob_flag': False
             }
         for roi_direct, roi in ROIS.items():
-            blobs=img.find_blobs(LINE_COLOR_THRESHOLD, roi=roi, merge=True, pixels_area=10)
+            blobs=img.find_blobs(LINE_COLOR_THRESHOLD, roi=roi, merge=True, pixels_area=50)
             if len(blobs) == 0:
                 continue
             largest_blob = max(blobs, key=lambda b: b.pixels())
             x,y,width,height = largest_blob[:4]
-            if not(width >=5 and width <= 50 and height >= 5 and height <= 50):
+            if not(width >=32 and width <= 60 and height >= 32 and height <= 60):
                 continue
             roi_blobs_result[roi_direct]['cx'] = largest_blob.cx()
             roi_blobs_result[roi_direct]['cy'] = largest_blob.cy()

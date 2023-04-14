@@ -66,7 +66,6 @@ def on_transmit():
     # print('[KC] Tx Buffer: {}'.format(i2cTxBuffer))
     # print('[KC] Tx Buffer len: {}'.format(len(i2cTxBuffer)))
     if len(sendQueue) > 0:
-        sendQueue[0]
         data_len = len(sendQueue[0])
         if (data_len != 0 and i2cTxIndex < data_len):
             data = sendQueue[0][i2cTxIndex]
@@ -219,7 +218,7 @@ def switch_mode(mode):
         # 开始分类识别
         clearItem()
         gc.collect()
-        currentItem = mode.KCameraSelfLearning(4, boot_key)
+        currentItem = mode.KCameraSelfLearning(20, ui.left_key)
         currentMode = KC_MODE_SELF_LEARNING
         currentItem.load_classifier()
         process_callback = currentItem.star_learn
@@ -306,7 +305,7 @@ def ParseData(jsonstr):
                 # 自学习分类
                 if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
                     clearItem()
-                    currentItem = mode.KCameraSelfLearning(4, boot_key)
+                    currentItem = mode.KCameraSelfLearning(20, ui.left_key)
                     currentMode = KC_MODE_SELF_LEARNING
                 currentItem.load_classifier()
                 process_callback = currentItem.star_learn
@@ -316,7 +315,7 @@ def ParseData(jsonstr):
             elif (act == mode.KC_ACT_LOADMODE):
                 # 开始加载分类器模式
                 clearItem()
-                currentItem = mode.KCameraSelfLearning(4, boot_key)
+                currentItem = mode.KCameraSelfLearning(20, ui.left_key)
                 currentMode = KC_MODE_SELF_LEARNING
                 if (data != None):
                     print('[KC] 加载自学习分类器: {}'.format(data))
@@ -333,7 +332,7 @@ def ParseData(jsonstr):
                 if (data != None):
                     if (currentItem == None or (currentItem != None and currentItem.name != KC_MODE_SELF_LEARNING)):
                         clearItem()
-                        currentItem = mode.KCameraSelfLearning(4, boot_key)
+                        currentItem = mode.KCameraSelfLearning(20, ui.left_key)
                         currentMode = KC_MODE_SELF_LEARNING
                     currentItem.load_classifier()
                     currentItem.update_save_name(data + '.classifier')
@@ -450,16 +449,20 @@ def ParseData(jsonstr):
                 sendQueue.append(b'{"status": 200}')
 
         # 保存到文件
-        f = open('mode.cfg', 'w')
-        f.write(jsonstr)
-        f.close()
+        # f = open('mode.cfg', 'w')
+        # f.write(jsonstr)
+        # f.close()
 
     elif (method == 'get'):
         print('user request get...')
         if (currentItem != None):
             # i2cTxBuffer = gen_payload(currentItem.result)
             # i2cTxIndex = 0
-            sendQueue.append(gen_payload(currentItem.result))
+
+            try:
+                sendQueue.append(str(currentItem.result[request["key"]]).encode())
+            except:
+                sendQueue.append(gen_payload(currentItem.result))
             print(sendQueue)
 
 
@@ -522,11 +525,11 @@ while True:
     ## UI绘制部分  ##
     if (img != None):
         # 菜单栏
-        mui.drawMenuBar(img)
+        # mui.drawMenuBar(img)
         # 光标
-        mui.drawCursor(img)
+        # mui.drawCursor(img)
         # 菜单
-        mui.DrawMenu(img)
+        # mui.DrawMenu(img)
         lcd.display(img)
     
 

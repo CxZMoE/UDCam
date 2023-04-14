@@ -32,7 +32,7 @@ class KCameraSelfLearning():
         
         self.update(num)
         self.THRESHOLD = 8
-        self.class_names = ['1', '2', '3', '4']
+        self.class_names = [str(i) for i in range(1, 21)]
         self.colors_reconize = ColorUtils()
         self.key = GPIO(GPIO.GPIOHS8,GPIO.PULL_UP)
         self.key_save = key_save
@@ -61,11 +61,11 @@ class KCameraSelfLearning():
         # img = img.rotation_corr(z_rotation=90)
         
         color = self.colors_reconize.GetColor(img_return)
-        if self.load_mode != 1:
-            if self.key_save.value() == 0 and self.train_status == 0:  # 如果按键按下
-                self.default_load_mode = 1
-                self.load_save_learn()
-                time.sleep_ms(50)  # 消抖
+        # if self.load_mode != 1:
+        #     if self.key_save.value() == 0 and self.train_status == 0:  # 如果按键按下
+        #         self.default_load_mode = 1
+        #         self.load_save_learn()
+        #         time.sleep_ms(50)  # 消抖
         
         if self.default_load_mode == 1 or self.load_mode == 1:
             self.load_self_learning_mode(img_return, img, color)
@@ -134,7 +134,7 @@ class KCameraSelfLearning():
 
             self.save_the_local_system(
                 self.save_name, img_return)                        # 根据按键保存自学习本地模型
-            # print(a)
+            print('can save')
         # lcd.display(img)
         gc.collect()
         return img_return
